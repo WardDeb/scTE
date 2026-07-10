@@ -77,7 +77,7 @@ def readGtf(filename):
     else:
         o = open(filename, "r")
 
-    for idx, l in enumerate(o):
+    for l in o:
         if ".gz" in filename:
             l = l.decode("ascii")
         if l.startswith("#"):

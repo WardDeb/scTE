@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scTE"
+version = "1.0"
+description = "Tool for estimating differential enrichment of Transposable Elements and other highly repetitive regions in single-cell data"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = [""]
+
+dependencies = [
+    "argparse",
+    "scipy",
+    "pandas",
+    "numpy",
+    "anndata",
+]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+[project.scripts]
+scTE = "scTE.exec_scTE:main"
+scTE_build = "scTE.exec_scTE_build:main"
+scTEATAC_build = "scTE.exec_scTEATAC_build:main"
+scTEATAC = "scTE.exec_scTEATAC:main"
+
+[tool.setuptools.packages.find]
+include = ["scTE", "scTE.miniglbase"]
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.pixi.workspace]
+channels = ["conda-forge", "bioconda"]
+platforms = ["linux-64", "osx-arm64", "osx-64"]
+[tool.pixi.pypi-dependencies]
+scTE = { path = ".", editable = true }

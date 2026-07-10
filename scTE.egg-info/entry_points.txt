@@ -1,0 +1,5 @@
+[console_scripts]
+scTE = scTE.exec_scTE:main
+scTEATAC = scTE.exec_scTEATAC:main
+scTEATAC_build = scTE.exec_scTEATAC_build:main
+scTE_build = scTE.exec_scTE_build:main
