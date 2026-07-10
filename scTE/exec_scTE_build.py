@@ -101,8 +101,6 @@ def readGtf(filename):
                 raw[name] = []
             raw[name].append([chr, left, riht])
 
-            if "protein_coding" not in l and "lincRNA" not in l:
-                continue
             if name not in clean:
                 clean[name] = []
             clean[name].append([chr, left, riht])
