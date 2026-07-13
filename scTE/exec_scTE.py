@@ -12,6 +12,7 @@ from scTE.miniglbase import genelist, glload, location
 from scTE.annotation import annoGtf
 from scTE.base import *
 from pathlib import Path
+import shutil
 
 def prepare_parser():
     desc = "hahaha..."
@@ -91,8 +92,14 @@ def main():
 
     info(args.argtxt + "\n")
 
+    print(f"Creating output directory: {Path(args.out).parent}")
     outname = args.out.split('/')[-1:][0]
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    odir = Path(args.out).parent
+    odir.mkdir(parents=True, exist_ok=True)
+    # Make tmp dir
+    _tmpdir = odir / 'scTE_tmp'
+    _tmpdir.mkdir(parents=True, exist_ok=True)
+
 
     info("Loading the genome annotation index... %s"%(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
     allelement, chr_list, all_annot, glannot = Readanno(filename=outname, annoglb=args.annoglb[0]) #genome=args.genome
@@ -104,68 +111,69 @@ def main():
     if len(args.input) == 1 and ',' in args.input[0]:
         args.input=args.input[0].split(',')
 
-    if not os.path.exists('%s_scTEtmp/o1'%outname):
-        os.system('mkdir -p %s_scTEtmp/o1'%outname)
+    if not os.path.exists(f'{str(_tmpdir)}/o1'):
+        os.system(f'mkdir -p {str(_tmpdir)}/o1')
 
     for k in args.input:
-        checkCBUMI(filename=k,out=outname,CB=args.CB,UMI=args.UMI)
+        checkCBUMI(filename=k,out=outname,CB=args.CB,UMI=args.UMI, tmpdir=str(_tmpdir))
     info("Input SAM/BAM file appears to be valid")
 
     if len(args.input) > 1:
         info('Using parabam2bed as more than 1 input BAM')
         pool=multiprocessing.Pool(processes=args.thread)
-        partial_work = partial(Para_bam2bed, CB=args.CB, UMI=args.UMI,out=outname)
+        partial_work = partial(Para_bam2bed, CB=args.CB, UMI=args.UMI,out=outname, tmpdir=str(_tmpdir))
         pool.map(partial_work, args.input)
-        os.system('gunzip -c -f %s_scTEtmp/o0/*.bed.gz | gzip > %s_scTEtmp/o1/%s.bed.gz' % (outname,outname,outname))
+        os.system(f'gunzip -c -f {str(_tmpdir)}/o0/*.bed.gz | gzip > {str(_tmpdir)}/o1/{outname}.bed.gz')
 
     else:
         print(args.CB,args.UMI,'good\n')
-        Bam2bed(args.input[0], args.CB, args.UMI, outname, args.thread)
-    info("Done BAM/SAM files processing ...%s \n"%(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        Bam2bed(args.input[0], args.CB, args.UMI, outname, args.thread, str(_tmpdir))
+    info(f"Done BAM/SAM files processing ... {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} \n")
 
-    info("Splitting ...%s"%(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    info(f"Splitting ...{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}")
     if args.thread == 1: #Single thread path, mainly
         # This is useful for testing optimsations, as the multiprocessing path the profile
         # Just gets locked up in {method 'acquire' of '_thread.lock' objects}
         info('Executing single thread path')
-        whitelist = splitAllChrs(chr_list, filename=outname, genenumber=args.genenumber, countnumber=args.countnumber, UMI=args.UMI)
+        whitelist = splitAllChrs(chr_list, filename=outname, genenumber=args.genenumber, countnumber=args.countnumber,tmpdir=str(_tmpdir), UMI=args.UMI)
     else:
         info('Executing multiple thread path with %s threads' % args.thread)
         pool=multiprocessing.Pool(processes=args.thread)
-        partial_work = partial(splitChr, filename=outname, CB=args.CB, UMI=args.UMI)
+        partial_work = partial(splitChr, filename=outname, CB=args.CB, UMI=args.UMI, tmpdir=str(_tmpdir))
         pool.map(partial_work, chr_list)
-        whitelist = filterCRs(filename=outname, genenumber=args.genenumber, countnumber=args.countnumber)
+        whitelist = filterCRs(filename=outname, genenumber=args.genenumber, countnumber=args.countnumber, tmpdir=str(_tmpdir))
 
     info("Finished processing sample files %s \n"%(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
     info("Fetching from the annotation index... %s"%(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
     if args.thread == 1: #Single thread path
         for chrom in chr_list:
-            align(chr=chrom, filename=outname, all_annot=None, glannot=glannot, whitelist=whitelist) #CB=args.CB
+            align(chr=chrom, filename=outname, all_annot=None, glannot=glannot, whitelist=whitelist, tmpdir=str(_tmpdir)) #CB=args.CB
 
     else: # Multiprocessing path:
         pool = multiprocessing.Pool(processes=args.thread)
-        partial_work = partial(align, filename=outname, all_annot=all_annot, glannot=None, whitelist=whitelist) # send a copy of the index,  CB=args.CB
+        partial_work = partial(align, filename=outname, all_annot=all_annot, glannot=None, whitelist=whitelist, tmpdir=str(_tmpdir)) # send a copy of the index,  CB=args.CB
         pool.map(partial_work, chr_list)
 
-    if not os.path.exists('%s_scTEtmp/o4'%outname):
-        os.system('mkdir -p %s_scTEtmp/o4'%outname)
-    os.system('gunzip -c -f %s_scTEtmp/o3/%s.*.bed.gz | gzip > %s_scTEtmp/o4/%s.bed.gz' % (outname,outname,outname,outname))
-    info("Done fetching... %s \n"%(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    if not os.path.exists(f'{str(_tmpdir)}/o4'):
+        os.system(f'mkdir -p {str(_tmpdir)}/o4')
+    os.system(f'gunzip -c -f {str(_tmpdir)}/o3/{outname}.*.bed.gz | gzip > {str(_tmpdir)}/o4/{outname}.bed.gz')
+    info(f"Done fetching... {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")} \n")
 
-    info("Calculating expression... %s"%(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-    len_res, genenumber, filename = Countexpression(filename=args.out, allelement=allelement, genenumber=args.genenumber, cellnumber=args.cellnumber, hdf5=args.hdf5)
+    info(f"Calculating expression... {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}")
+    len_res, genenumber, filename = Countexpression(filename=outname, allelement=allelement, genenumber=args.genenumber, cellnumber=args.cellnumber, hdf5=args.hdf5, tmpdir=str(_tmpdir), odir=str(odir))
     if args.hdf5 == True:
         info('Detect {0} cells expressed at least {1} genes, results output to {2}.h5ad'.format(len_res, genenumber, filename))
     else:
         info('Detect {0} cells expressed at least {1} genes, results output to {2}.csv'.format(len_res, genenumber, filename))
 
-    info("Finished calculating expression %s"%(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    info(f"Finished calculating expression {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}")
 
     if args.keeptmp == 'True':
         pass
     else:
-        os.system('rm -rf %s_scTEtmp'%outname)
+        shutil.rmtree(_tmpdir)
+
 
     timeend = datetime.datetime.now()
     info("Done with %s\n" % timediff(timestart,timeend))
