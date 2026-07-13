@@ -11,6 +11,7 @@ sys.path.append(os.path.join(os.path.split(sys.argv[0])[0], '../'))
 from scTE.miniglbase import genelist, glload, location
 from scTE.annotation import annoGtf
 from scTE.base import *
+from pathlib import Path
 
 def prepare_parser():
     desc = "hahaha..."
@@ -91,6 +92,7 @@ def main():
     info(args.argtxt + "\n")
 
     outname = args.out.split('/')[-1:][0]
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
 
     info("Loading the genome annotation index... %s"%(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
     allelement, chr_list, all_annot, glannot = Readanno(filename=outname, annoglb=args.annoglb[0]) #genome=args.genome
@@ -115,7 +117,7 @@ def main():
         partial_work = partial(Para_bam2bed, CB=args.CB, UMI=args.UMI,out=outname)
         pool.map(partial_work, args.input)
         os.system('gunzip -c -f %s_scTEtmp/o0/*.bed.gz | gzip > %s_scTEtmp/o1/%s.bed.gz' % (outname,outname,outname))
-    
+
     else:
         print(args.CB,args.UMI,'good\n')
         Bam2bed(args.input[0], args.CB, args.UMI, outname, args.thread)
@@ -157,7 +159,7 @@ def main():
         info('Detect {0} cells expressed at least {1} genes, results output to {2}.h5ad'.format(len_res, genenumber, filename))
     else:
         info('Detect {0} cells expressed at least {1} genes, results output to {2}.csv'.format(len_res, genenumber, filename))
-    
+
     info("Finished calculating expression %s"%(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
     if args.keeptmp == 'True':
@@ -174,5 +176,3 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         sys.stderr.write("User interrupt !\n")
         sys.exit(0)
-
-
