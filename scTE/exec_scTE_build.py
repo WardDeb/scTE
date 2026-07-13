@@ -177,7 +177,7 @@ def genomeIndex(genome, mode, tefile, genefile, outname, geneurls, teurls):
         if ".gz" in tefilename:
             o = gzip.open(tefilename, "rb")
         else:
-            o = open(tefilename, "rU")
+            o = open(tefilename, "r")
 
         for n, l in enumerate(o):
             if ".gz" in tefilename:
