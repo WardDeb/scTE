@@ -275,7 +275,7 @@ def splitAllChrs(chromosome_list, filename, genenumber, countnumber,tmpdir, UMI=
 
     CRs = {k: v for k, v in CRs.items() if v >= mincounts}
 
-    return list(CRs.keys())
+    return set(CRs.keys())
 
 def filterCRs(filename, genenumber, countnumber, tmpdir):
     CRs = defaultdict(int)
@@ -296,7 +296,7 @@ def filterCRs(filename, genenumber, countnumber, tmpdir):
     CRs = {k: v for k, v in CRs.items() if v >= mincounts}
     logging.info('Aefore filter %s'%len(CRs))
 
-    return list(CRs.keys())
+    return set(CRs.keys())
 
 def splitChr(chr, filename, CB, UMI, tmpdir):
     if not os.path.exists('%s/o2'%tmpdir):
